@@ -1,34 +1,42 @@
-import { Consumer, Producer, RtpCapabilities, RtpParameters } from "mediasoup/node/lib/types.js";
+import {
+  Consumer,
+  Producer,
+  RtpCapabilities,
+  RtpParameters,
+} from "mediasoup/node/lib/types.js";
 import {
   DtlsParameters,
   WebRtcTransport,
 } from "mediasoup/node/lib/WebRtcTransportTypes.js";
 import {
   Room,
-  TrackSource,
   TransportDirection,
   Transports,
+  SFUAppDataConstraint,
 } from "./types.js";
 
-export type ParticipantAppData = {
-  source: TrackSource
-}
-
-export class Participant<K extends ParticipantAppData> {
+export class Participant<K extends SFUAppDataConstraint, V> {
   id: string;
   transports: {
     send: WebRtcTransport;
     recv: WebRtcTransport;
   };
-  room: Room<K>;
+  room: Room<K, V>;
   consumers: Record<string, Consumer<K>> = {};
   producers: Record<string, Producer<K>> = {};
   rtpCapabilities: RtpCapabilities | null = null;
+  appData: V;
 
-  constructor(id: string, transports: Transports, room: Room<K>) {
+  constructor(
+    id: string,
+    transports: Transports,
+    room: Room<K, V>,
+    appData: V,
+  ) {
     this.id = id;
     this.transports = transports;
     this.room = room;
+    this.appData = appData;
   }
 
   connectTransport(
@@ -45,7 +53,8 @@ export class Participant<K extends ParticipantAppData> {
       rtpParameters,
       appData,
       kind:
-        appData.source === "microphone" || appData.source === "screenshare-audio"
+        appData.source === "microphone" ||
+        appData.source === "screenshare-audio"
           ? "audio"
           : "video",
     });
@@ -53,12 +62,18 @@ export class Participant<K extends ParticipantAppData> {
     return producer;
   }
 
-  async consume(sourceFilter: string, participant: Participant<K>, appData: K) {
+  async consume(
+    sourceFilter: string,
+    participant: Participant<K, V>,
+    appData: K,
+  ) {
     const transport = this.transports.recv;
 
-    const producers = Object.values(participant.producers).filter((producer) => {
-      return producer.appData.source.includes(sourceFilter)
-    });
+    const producers = Object.values(participant.producers).filter(
+      (producer) => {
+        return producer.appData.source.includes(sourceFilter);
+      },
+    );
 
     const consumers: Consumer<K>[] = [];
 

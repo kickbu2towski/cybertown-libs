@@ -11,17 +11,18 @@ import {
   ConsumeOptions,
   InitOptions,
   Room,
+  SFUAppDataConstraint,
 } from "./types.js";
-import { Participant, ParticipantAppData } from "./participant.js";
+import { Participant } from "./participant.js";
 
-export class SFU<K extends ParticipantAppData> {
+export class SFU<K extends SFUAppDataConstraint, V> {
   private workerIdx = 0;
   private workers: Worker[] = [];
 
   // maps worker pid to router
   private routers: Record<string, Router> = {};
 
-  private rooms: Record<number, Room<K>> = {};
+  private rooms: Record<number, Room<K, V>> = {};
 
   private options: InitOptions;
 
@@ -58,7 +59,7 @@ export class SFU<K extends ParticipantAppData> {
     };
   }
 
-  async addParticipant(id: string, roomID: number) {
+  async addParticipant(id: string, roomID: number, appData: V) {
     const room = this.rooms[roomID];
     if (!room) {
       return;
@@ -67,13 +68,14 @@ export class SFU<K extends ParticipantAppData> {
     const sendTransport = await this.createTransport(room);
     const recvTransport = await this.createTransport(room);
 
-    const participant = new Participant(
+    const participant = new Participant<K, V>(
       id,
       {
         recv: recvTransport,
         send: sendTransport,
       },
       room,
+      appData,
     );
 
     room.participants[id] = participant;
@@ -258,7 +260,17 @@ export class SFU<K extends ParticipantAppData> {
     return Object.values(room.participants);
   }
 
-  private async createTransport(room: Room<K>) {
+  getParticipantsByAppData(roomID: number, cb: (appData: V) => boolean) {
+    const room = this.rooms[roomID];
+    if (!room) {
+      return;
+    }
+    return Object.values(room.participants).filter((participant) =>
+      cb(participant.appData),
+    );
+  }
+
+  private async createTransport(room: Room<K, V>) {
     return room.router.createWebRtcTransport(this.options.transportOptions);
   }
 }
