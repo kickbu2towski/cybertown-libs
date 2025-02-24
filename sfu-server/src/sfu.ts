@@ -1,23 +1,22 @@
 import os from "os";
 import mediasoup from "mediasoup";
-import { Worker, Router } from "mediasoup/node/lib/types.js";
+import { Worker, Router, RtpParameters } from "mediasoup/node/lib/types.js";
 import {
   ConnectTransportOptions,
   ConsumeOptions,
   InitOptions,
-  ProduceTransportOptions,
   Room,
 } from "./types.js";
-import { Participant } from "./participant.js";
+import { Participant, ParticipantAppData } from "./participant.js";
 
-export class SFU {
+export class SFU<K extends ParticipantAppData> {
   private workerIdx = 0;
   private workers: Worker[] = [];
 
   // maps worker pid to router
   private routers: Record<string, Router> = {};
 
-  private rooms: Record<number, Room> = {};
+  private rooms: Record<number, Room<K>> = {};
 
   private options: InitOptions;
 
@@ -114,7 +113,8 @@ export class SFU {
   async produceTransport(
     participantID: string,
     roomID: number,
-    options: ProduceTransportOptions,
+    rtpParameters: RtpParameters,
+    appData: K
   ) {
     const room = this.rooms[roomID];
     if (!room) {
@@ -124,10 +124,7 @@ export class SFU {
     if (!participant) {
       return;
     }
-    const producer = await participant.produce(
-      options.source,
-      options.rtpParameters,
-    );
+    const producer = await participant.produce(rtpParameters, appData);
     return producer;
   }
 
@@ -135,6 +132,7 @@ export class SFU {
     participantID: string,
     roomID: number,
     options: ConsumeOptions,
+    appData: K,
   ) {
     const room = this.rooms[roomID];
     if (!room) {
@@ -154,6 +152,7 @@ export class SFU {
     const consumers = await participant.consume(
       options.sourceFilter,
       otherParticipant,
+      appData,
     );
     return consumers;
   }
@@ -231,7 +230,7 @@ export class SFU {
     return Object.values(room.participants);
   }
 
-  private async createTransport(room: Room) {
+  private async createTransport(room: Room<K>) {
     return room.router.createWebRtcTransport(this.options.transportOptions);
   }
 }

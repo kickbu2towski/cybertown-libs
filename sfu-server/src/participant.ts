@@ -1,29 +1,31 @@
-import { RtpCapabilities, RtpParameters } from "mediasoup/node/lib/types.js";
+import { Consumer, Producer, RtpCapabilities, RtpParameters } from "mediasoup/node/lib/types.js";
 import {
   DtlsParameters,
   WebRtcTransport,
 } from "mediasoup/node/lib/WebRtcTransportTypes.js";
 import {
   Room,
-  SFUConsumer,
-  SFUProducer,
   TrackSource,
   TransportDirection,
   Transports,
 } from "./types.js";
 
-export class Participant {
+export type ParticipantAppData = {
+  source: TrackSource
+}
+
+export class Participant<K extends ParticipantAppData> {
   id: string;
   transports: {
     send: WebRtcTransport;
     recv: WebRtcTransport;
   };
-  room: Room;
-  consumers: Record<string, SFUConsumer> = {};
-  producers: Record<string, SFUProducer> = {};
+  room: Room<K>;
+  consumers: Record<string, Consumer<K>> = {};
+  producers: Record<string, Producer<K>> = {};
   rtpCapabilities: RtpCapabilities | null = null;
 
-  constructor(id: string, transports: Transports, room: Room) {
+  constructor(id: string, transports: Transports, room: Room<K>) {
     this.id = id;
     this.transports = transports;
     this.room = room;
@@ -37,15 +39,13 @@ export class Participant {
     transport.connect({ dtlsParameters });
   }
 
-  async produce(source: TrackSource, rtpParameters: RtpParameters) {
+  async produce(rtpParameters: RtpParameters, appData: K) {
     const transport = this.transports.send;
     const producer = await transport.produce({
       rtpParameters,
-      appData: {
-        source,
-      },
+      appData,
       kind:
-        source === "microphone" || source === "screenshare-audio"
+        appData.source === "microphone" || appData.source === "screenshare-audio"
           ? "audio"
           : "video",
     });
@@ -53,14 +53,14 @@ export class Participant {
     return producer;
   }
 
-  async consume(sourceFilter: string, participant: Participant) {
+  async consume(sourceFilter: string, participant: Participant<K>, appData: K) {
     const transport = this.transports.recv;
 
     const producers = Object.values(participant.producers).filter((producer) => {
       return producer.appData.source.includes(sourceFilter)
     });
 
-    const consumers: SFUConsumer[] = [];
+    const consumers: Consumer<K>[] = [];
 
     for (const producer of producers) {
       const canConsume = this.room.router.canConsume({
@@ -78,10 +78,7 @@ export class Participant {
         paused: true,
         producerId: producer.id,
         rtpCapabilities: this.rtpCapabilities!,
-        appData: {
-          source: producer.appData.source,
-          participantID: participant.id,
-        },
+        appData,
       });
       this.consumers[consumer.id] = consumer;
       consumers.push(consumer);
@@ -144,7 +141,7 @@ export class Participant {
     }
   }
 
-  private closeProducer(producer: SFUProducer) {
+  private closeProducer(producer: Producer<K>) {
     producer.close();
 
     for (const participant of Object.values(this.room.participants)) {

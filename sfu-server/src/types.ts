@@ -1,20 +1,16 @@
 import {
-  Consumer,
   DtlsParameters,
-  Producer,
   Router,
   RouterOptions,
-  RtpParameters,
-  WebRtcServerOptions,
   WebRtcTransport,
   WebRtcTransportOptions,
   WorkerSettings,
 } from "mediasoup/node/lib/types.js";
-import { Participant } from "./participant.js";
+import { Participant, ParticipantAppData } from "./participant.js";
 
-export type Room = {
+export type Room<K extends ParticipantAppData> = {
   router: Router;
-  participants: Record<string, Participant>;
+  participants: Record<string, Participant<K>>;
 };
 
 export type Transports = {
@@ -30,34 +26,15 @@ export type TrackSource =
   | "screenshare-video"
   | "camera";
 
-type ProducerAppData = {
-  source: TrackSource;
-};
-
-type ConsumerAppData = {
-  source: TrackSource;
-  participantID: string;
-};
-
-export type SFUProducer = Producer<ProducerAppData>;
-export type SFUConsumer = Consumer<ConsumerAppData>;
-
 export type ConnectTransportOptions = {
   direction: TransportDirection;
   dtlsParameters: DtlsParameters;
-};
-
-export type ProduceTransportOptions = {
-  source: TrackSource;
-  rtpParameters: RtpParameters;
 };
 
 export type ConsumeOptions = {
   sourceFilter: string;
   otherParticipantID: string;
 };
-
-export type ProduceOptions = {};
 
 export type InitOptions = {
   workerSettings: WorkerSettings;
