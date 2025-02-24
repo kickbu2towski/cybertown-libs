@@ -2,6 +2,9 @@ import type {
   Transport,
   RtpCapabilities,
   ProducerOptions,
+  Producer,
+  RtpCodecCapability,
+  Consumer,
 } from "mediasoup-client/lib/types";
 import { Device } from "mediasoup-client";
 import {
@@ -9,22 +12,24 @@ import {
   ProduceTransport,
   ConnectTransport,
   ProduceEventCallback,
-  TrackSource,
   TransportDirection,
   InitOptions,
-  SFUProducer,
-  SFUConsumer,
-  ProducerAppData,
   ConsumeOptions,
+  TrackSource,
 } from "./types";
 import { TypedEventTarget } from "./TypedEventTarget";
 
-export class SFU extends TypedEventTarget {
+
+export type SFUAppData = {
+  source: TrackSource
+};
+
+export class SFU<K extends SFUAppData> extends TypedEventTarget {
   device: Device | null = null;
   transports: Transports = {};
 
-  producers: Record<string, SFUProducer> = {};
-  consumers: Record<string, SFUConsumer> = {};
+  producers: Record<string, Producer<K>> = {};
+  consumers: Record<string, Consumer<K>> = {};
 
   produceEventCallbacks: Record<string, ProduceEventCallback> = {};
 
@@ -59,24 +64,22 @@ export class SFU extends TypedEventTarget {
     return this.device.rtpCapabilities;
   }
 
-  public async produce(
-    source: TrackSource,
-    track: MediaStreamTrack,
-  ): Promise<SFUProducer> {
+  public async produce(track: MediaStreamTrack, appData: K): Promise<Producer<K>> {
     if (!this.transports?.send) {
       throw new Error("send transport must be setup to produce");
     }
 
-    const producerOptions: ProducerOptions<ProducerAppData> = {
+    const producerOptions: ProducerOptions<K> = {
       track,
-      appData: {
-        source,
-      },
+      appData
     };
 
-    const codec = this.device!.rtpCapabilities.codecs?.find((codec) => {
-      return codec.mimeType.toLowerCase() === this.codecMap[source];
-    });
+    let codec: RtpCodecCapability | undefined
+    if(this.codecMap) {
+      codec = this.device!.rtpCapabilities.codecs?.find((codec) => {
+        return codec.mimeType.toLowerCase() === this.codecMap[appData.source];
+      });
+    }
     if (codec) {
       producerOptions.codec = codec;
     }
@@ -88,9 +91,9 @@ export class SFU extends TypedEventTarget {
   }
 
   public async consume(
-    source: TrackSource,
     options: ConsumeOptions,
-  ): Promise<SFUConsumer> {
+    appData: K
+  ): Promise<Consumer<K>> {
     if (!this.transports?.recv) {
       throw new Error("receive transport must be setup to consume");
     }
@@ -100,10 +103,7 @@ export class SFU extends TypedEventTarget {
       rtpParameters: options.rtpParameters,
       producerId: options.producerID,
       kind: options.kind,
-      appData: {
-        source,
-        participantID: options.participantID,
-      },
+      appData,
     });
     this.consumers[consumer.id] = consumer;
 
@@ -146,7 +146,7 @@ export class SFU extends TypedEventTarget {
     }
   }
 
-  closeProducers(callback: (producer: SFUProducer) => boolean): string[] {
+  closeProducers(callback: (producer: Producer<K>) => boolean): string[] {
     const producersToDelete = [];
     for (const producer of Object.values(this.producers)) {
       if (!callback(producer)) {
@@ -161,7 +161,7 @@ export class SFU extends TypedEventTarget {
     return producersToDelete;
   }
 
-  closeConsumers(callback: (consumer: SFUConsumer) => boolean): string[] {
+  closeConsumers(callback: (consumer: Consumer<K>) => boolean): string[] {
     const consumersToDelete = [];
     for (const consumer of Object.values(this.consumers)) {
       if (!callback(consumer)) {
@@ -208,7 +208,7 @@ export class SFU extends TypedEventTarget {
         detail: {
           rtpParameters: data.rtpParameters,
           producerKey,
-          source: (data.appData as ProducerAppData).source,
+          source: data.appData.source as TrackSource,
         },
       });
       this.dispatchEvent(event);

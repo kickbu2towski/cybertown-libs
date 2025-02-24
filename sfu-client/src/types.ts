@@ -4,8 +4,6 @@ import {
   type TransportOptions,
   type RtpParameters,
   type RtpCapabilities,
-  Producer,
-  Consumer,
   MediaKind,
 } from "mediasoup-client/lib/types";
 
@@ -43,18 +41,7 @@ export type TrackSource =
   | "screenshare-audio"
   | "screenshare-video";
 
-export type ProducerAppData = {
-  source: TrackSource;
-};
-
-export type ConsumerAppData = {
-  source: TrackSource;
-  participantID: string;
-};
-
 export type TransportDirection = "send" | "recv";
-export type SFUProducer = Producer<ProducerAppData>;
-export type SFUConsumer = Consumer<ConsumerAppData>;
 
 export type ConsumeOptions = {
   id: string;
