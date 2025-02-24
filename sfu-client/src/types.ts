@@ -45,7 +45,6 @@ export type TransportDirection = "send" | "recv";
 
 export type ConsumeOptions = {
   id: string;
-  participantID: string;
   rtpParameters: RtpParameters;
   producerID: string;
   kind: MediaKind;

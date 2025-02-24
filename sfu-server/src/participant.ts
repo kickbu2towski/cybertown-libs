@@ -78,7 +78,7 @@ export class Participant<K extends ParticipantAppData> {
         paused: true,
         producerId: producer.id,
         rtpCapabilities: this.rtpCapabilities!,
-        appData,
+        appData: { ...appData, source: producer.appData.source },
       });
       this.consumers[consumer.id] = consumer;
       consumers.push(consumer);
