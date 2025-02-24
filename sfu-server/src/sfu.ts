@@ -188,29 +188,6 @@ export class SFU<K extends SFUAppDataConstraint, V> {
     participant.closeConsumers(consumerIDs);
   }
 
-  closeConsumersByCallback(
-    roomID: number,
-    cb: (consumer: Consumer<K>) => boolean,
-  ) {
-    const participants = this.getParticipants(roomID);
-    if (!participants) {
-      return;
-    }
-    for (const participant of participants) {
-      const consumerIDs: string[] = [];
-      for (const consumer of Object.values(participant.consumers)) {
-        if (!cb(consumer)) {
-          continue;
-        }
-        consumerIDs.push(consumer.id);
-        consumer.close();
-      }
-      for (const id of consumerIDs) {
-        delete participant.consumers[id];
-      }
-    }
-  }
-
   resumeConsumer(participantID: string, roomID: number, consumerID: string) {
     const room = this.rooms[roomID];
     if (!room) {
