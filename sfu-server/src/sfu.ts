@@ -1,6 +1,11 @@
 import os from "os";
 import mediasoup from "mediasoup";
-import { Worker, Router, RtpParameters } from "mediasoup/node/lib/types.js";
+import {
+  Worker,
+  Router,
+  RtpParameters,
+  Consumer,
+} from "mediasoup/node/lib/types.js";
 import {
   ConnectTransportOptions,
   ConsumeOptions,
@@ -114,7 +119,7 @@ export class SFU<K extends ParticipantAppData> {
     participantID: string,
     roomID: number,
     rtpParameters: RtpParameters,
-    appData: K
+    appData: K,
   ) {
     const room = this.rooms[roomID];
     if (!room) {
@@ -179,6 +184,29 @@ export class SFU<K extends ParticipantAppData> {
       return;
     }
     participant.closeConsumers(consumerIDs);
+  }
+
+  closeConsumersByCallback(
+    roomID: number,
+    cb: (consumer: Consumer<K>) => boolean,
+  ) {
+    const participants = this.getParticipants(roomID);
+    if (!participants) {
+      return;
+    }
+    for (const participant of participants) {
+      const consumerIDs: string[] = [];
+      for (const consumer of Object.values(participant.consumers)) {
+        if (!cb(consumer)) {
+          continue;
+        }
+        consumerIDs.push(consumer.id);
+        consumer.close();
+      }
+      for (const id of consumerIDs) {
+        delete participant.consumers[id];
+      }
+    }
   }
 
   resumeConsumer(participantID: string, roomID: number, consumerID: string) {
