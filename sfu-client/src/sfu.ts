@@ -19,9 +19,8 @@ import {
 } from "./types";
 import { TypedEventTarget } from "./TypedEventTarget";
 
-
 export type SFUAppData = {
-  source: TrackSource
+  source: TrackSource;
 };
 
 export class SFU<K extends SFUAppData> extends TypedEventTarget {
@@ -64,22 +63,26 @@ export class SFU<K extends SFUAppData> extends TypedEventTarget {
     return this.device.rtpCapabilities;
   }
 
-  public async produce(track: MediaStreamTrack, appData: K): Promise<Producer<K>> {
+  public async produce(
+    track: MediaStreamTrack,
+    appData: K,
+  ): Promise<Producer<K>> {
     if (!this.transports?.send) {
       throw new Error("send transport must be setup to produce");
     }
 
     const producerOptions: ProducerOptions<K> = {
       track,
-      appData
+      appData,
     };
 
-    let codec: RtpCodecCapability | undefined
-    if(this.codecMap) {
+    let codec: RtpCodecCapability | undefined;
+    if (this.codecMap) {
       codec = this.device!.rtpCapabilities.codecs?.find((codec) => {
         return codec.mimeType.toLowerCase() === this.codecMap[appData.source];
       });
     }
+    console.log("--codec--", codec);
     if (codec) {
       producerOptions.codec = codec;
     }
@@ -92,7 +95,7 @@ export class SFU<K extends SFUAppData> extends TypedEventTarget {
 
   public async consume(
     options: ConsumeOptions,
-    appData: K
+    appData: K,
   ): Promise<Consumer<K>> {
     if (!this.transports?.recv) {
       throw new Error("receive transport must be setup to consume");

@@ -45,3 +45,8 @@ export type InitOptions = {
 export type SFUAppDataConstraint = {
   source: TrackSource;
 };
+
+export type ProducerCloseResult = {
+  id: string;
+  source: TrackSource;
+};

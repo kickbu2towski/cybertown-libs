@@ -173,7 +173,7 @@ export class SFU<K extends SFUAppDataConstraint, V> {
     if (!participant) {
       return;
     }
-    participant.closeProducers(producerIDs);
+    return participant.closeProducers(producerIDs);
   }
 
   closeConsumers(participantID: string, roomID: number, consumerIDs: string[]) {

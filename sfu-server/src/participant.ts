@@ -13,6 +13,8 @@ import {
   TransportDirection,
   Transports,
   SFUAppDataConstraint,
+  TrackSource,
+  ProducerCloseResult,
 } from "./types.js";
 
 export class Participant<K extends SFUAppDataConstraint, V> {
@@ -110,18 +112,18 @@ export class Participant<K extends SFUAppDataConstraint, V> {
     consumer.resume();
   }
 
-  closeProducers(producerIDs: string[]): string[] {
-    const closedProducers: string[] = [];
+  closeProducers(producerIDs: string[]): ProducerCloseResult[] {
+    const closedProducers: ProducerCloseResult[] = [];
     for (const producerID of producerIDs) {
       const producer = this.producers[producerID];
       if (!producer) {
         continue;
       }
       this.closeProducer(producer);
-      closedProducers.push(producerID);
+      closedProducers.push({ id: producerID, source: producer.appData.source });
     }
-    for (const producerID of closedProducers) {
-      delete this.producers[producerID];
+    for (const p of closedProducers) {
+      delete this.producers[p.id];
     }
     return closedProducers;
   }
