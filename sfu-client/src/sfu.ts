@@ -82,7 +82,6 @@ export class SFU<K extends SFUAppData> extends TypedEventTarget {
         return codec.mimeType.toLowerCase() === this.codecMap[appData.source];
       });
     }
-    console.log("--codec--", codec);
     if (codec) {
       producerOptions.codec = codec;
     }
